@@ -36,6 +36,7 @@ app.use(errorHandker);
 
 //Routes
 app.use("/api/auth", require("./routes/api/auth"));
+app.use("/api/books", require("./routes/api/books"));
 
 app.all("*", (req, res) => {
   res.status(404);
