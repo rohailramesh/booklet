@@ -25,3 +25,19 @@ export interface IRegisterData {
   password: string
   password_confirm: string
 }
+
+export interface IBook {
+  _id: string
+  isbn: string
+  title: string
+  author?: string
+  cover_url?: string
+  user: string // user id
+  createdAt?: string
+}
+
+export interface IBookState {
+  books: IBook[]
+  loading: boolean
+  error: string | null
+}
