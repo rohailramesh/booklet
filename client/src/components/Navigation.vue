@@ -13,7 +13,8 @@ const menuItems = ref([
   { title: 'Home', path: '/', icon: 'home' },
   { title: 'Sign Up', path: '/signup', icon: 'face' },
   { title: 'Sign In', path: '/signin', icon: 'lock_open' },
-  { title: 'Profile', path: '/profile', icon: 'lock_open' }
+  { title: 'Profile', path: '/profile', icon: 'lock_open' },
+  { title: 'Books', path: '/books', icon: 'book' } // <-- new page
 ])
 
 const menuItemsFiltered = computed(() => {
@@ -23,8 +24,8 @@ const menuItemsFiltered = computed(() => {
       return !['/signin', '/signup'].includes(item.path)
     }
 
-    // hide profile when logged out
-    return item.path !== '/profile'
+    // hide pages requiring login when logged out
+    return !['/profile', '/books'].includes(item.path)
   })
 })
 
