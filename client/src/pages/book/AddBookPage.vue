@@ -45,7 +45,7 @@ const isValidISBN = (value: string) => {
 }
 
 const validateManualISBN = () => {
-  const trimmed = manualISBN.value.trim()
+  const trimmed = manualISBN.value?.trim() // Add null check
   if (trimmed && !isValidISBN(trimmed)) return 'Invalid ISBN-13 format'
   return ''
 }
