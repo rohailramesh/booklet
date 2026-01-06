@@ -26,10 +26,22 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/ProfilePage.vue'),
     meta: { requiresAuth: true }
   },
+  // {
+  //   path: '/books',
+  //   name: 'books',
+  //   component: () => import('@/pages/BooksPage.vue'),
+  //   meta: { requiresAuth: true }
+  // },
   {
     path: '/books',
     name: 'books',
-    component: () => import('@/pages/BooksPage.vue'),
+    component: () => import('@/pages/book/BooksListPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/books/add',
+    name: 'books-add',
+    component: () => import('@/pages/book/AddBookPage.vue'),
     meta: { requiresAuth: true }
   }
 ]

@@ -26,7 +26,7 @@ const signIn = async () => {
 
   try {
     await authStore.login(loginData)
-    router.replace({ name: 'profile' })
+    router.replace({ name: 'books' })
   } catch (err: any) {
     errorMessage.value = err?.message || 'Login failed'
   } finally {
@@ -36,67 +36,102 @@ const signIn = async () => {
 </script>
 
 <template>
-  <v-container class="d-flex align-center justify-center w-100 h-100">
-    <v-card class="mx-auto pa-10" elevation="8" max-width="440" rounded="lg">
-      <!-- Header -->
-      <div class="text-center mb-6">
-        <h2 class="text-h5 font-weight-medium">Welcome back</h2>
-        <p class="text-body-2 text-medium-emphasis mt-1">Sign in to continue</p>
+  <div class="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+    <div class="card shadow" style="max-width: 440px; width: 100%">
+      <div class="card-body p-5">
+        <!-- Header -->
+        <div class="text-center mb-4">
+          <h2 class="h5 fw-medium">Welcome back</h2>
+          <p class="text-muted mt-1">Sign in to continue</p>
+        </div>
+
+        <!-- Error -->
+        <div
+          v-if="errorMessage"
+          class="alert alert-danger alert-dismissible fade show"
+          role="alert"
+        >
+          {{ errorMessage }}
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+
+        <!-- Form -->
+        <form @submit.prevent="signIn">
+          <!-- Email -->
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+              <input
+                v-model="loginData.email"
+                type="email"
+                class="form-control"
+                id="email"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock"></i></span>
+              <input
+                v-model="loginData.password"
+                :type="visible ? 'text' : 'password'"
+                class="form-control"
+                id="password"
+                placeholder="Enter your password"
+                required
+              />
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="visible = !visible"
+                aria-label="Toggle password visibility"
+              >
+                <i :class="visible ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Persistent login info -->
+          <p class="text-muted small mt-2">
+            You’ll stay signed in on this device for up to 30 days.
+          </p>
+
+          <!-- Submit -->
+          <button type="submit" class="btn btn-primary w-100 mt-4" :disabled="submitDisabled">
+            <span
+              v-if="loading"
+              class="spinner-border spinner-border-sm me-2"
+              role="status"
+              aria-hidden="true"
+            ></span>
+            Sign in
+          </button>
+        </form>
+
+        <!-- Footer -->
+        <div class="text-center mt-4 small">
+          Don’t have an account?
+          <router-link to="/signup" class="text-primary text-decoration-none">Sign up</router-link>
+        </div>
       </div>
-
-      <!-- Error -->
-      <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4" density="compact">
-        {{ errorMessage }}
-      </v-alert>
-
-      <!-- Email -->
-      <v-text-field
-        v-model="loginData.email"
-        label="Email"
-        type="email"
-        prepend-inner-icon="mdi-email-outline"
-        variant="outlined"
-        density="comfortable"
-        class="mb-4"
-      />
-
-      <!-- Password -->
-      <v-text-field
-        v-model="loginData.password"
-        label="Password"
-        :type="visible ? 'text' : 'password'"
-        prepend-inner-icon="mdi-lock-outline"
-        :append-inner-icon="visible ? 'mdi-eye-off' : 'mdi-eye'"
-        variant="outlined"
-        density="comfortable"
-        @click:append-inner="visible = !visible"
-      />
-
-      <!-- Persistent login info -->
-      <p class="text-caption text-medium-emphasis mt-2">
-        You’ll stay signed in on this device for up to 30 days.
-      </p>
-
-      <!-- Submit -->
-      <v-btn
-        block
-        size="large"
-        color="primary"
-        class="mt-6"
-        :loading="loading"
-        :disabled="submitDisabled"
-        @click="signIn"
-      >
-        Sign in
-      </v-btn>
-
-      <!-- Footer -->
-      <div class="text-center mt-6 text-body-2">
-        Don’t have an account?
-        <router-link to="/signup" class="text-primary text-decoration-none"> Sign up </router-link>
-      </div>
-    </v-card>
-  </v-container>
+    </div>
+  </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+/* Optional: add subtle rounded corners */
+.card {
+  border-radius: 1rem;
+}
+</style>
