@@ -194,8 +194,8 @@ const saveBook = async () => {
     await bookStore.addBook({
       isbn: pendingISBN.value,
       title: bookTitle.value,
-      author: authorName.value || null,
-      coverUrl: coverUrl.value || null,
+      author: authorName.value || undefined,
+      coverUrl: coverUrl.value || undefined,
       user: authStore.user.id
     })
 
