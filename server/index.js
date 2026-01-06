@@ -14,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 3500;
 
 connectDB();
-
+app.set("trust proxy", 1);
 //Allow Credentials
 app.use(credentials);
 //CORS
