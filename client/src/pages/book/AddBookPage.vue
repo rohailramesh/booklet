@@ -112,6 +112,7 @@ const lookupAndPreviewBook = async (isbn: string) => {
 }
 
 const saveBook = async () => {
+  // Early guard ensures pendingISBN.value is string
   if (!pendingISBN.value || !bookTitle.value) return
 
   saveError.value = ''
@@ -119,7 +120,7 @@ const saveBook = async () => {
 
   try {
     await bookStore.addBook({
-      isbn: pendingISBN.value,
+      isbn: pendingISBN.value, // ← Now safe: TS knows it's string
       title: bookTitle.value,
       author: authorName.value || undefined,
       coverUrl: coverUrl.value || undefined
