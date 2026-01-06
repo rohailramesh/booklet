@@ -195,8 +195,8 @@ const saveBook = async () => {
       isbn: pendingISBN.value,
       title: bookTitle.value,
       author: authorName.value || undefined,
-      coverUrl: coverUrl.value || undefined,
-      user: authStore.user.id
+      coverUrl: coverUrl.value || undefined
+      // user: authStore.user.id
     })
 
     // Success → go to books list
