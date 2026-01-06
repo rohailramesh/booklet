@@ -110,8 +110,7 @@ const confirmISBN = async () => {
       isbn: pendingISBN.value,
       title: bookTitle.value,
       author: authorName.value,
-      coverUrl: coverUrl.value,
-      user: authStore.user.id
+      coverUrl: coverUrl.value
     })
     await bookStore.fetchBooks()
   } catch (err) {
@@ -141,7 +140,7 @@ const startScanning = () => {
   scanning.value = true
   codeReader.decodeFromVideoDevice(selectedDeviceId.value, videoRef.value!, (result, err) => {
     if (result) {
-      const value = result.text.trim()
+      const value = result.getText().trim()
       scannedCode.value = value
 
       if (!isValidISBN(value) || showInlineConfirm.value || value === lastProcessedISBN.value)
@@ -182,10 +181,6 @@ onMounted(async () => {
   videoDevices.value = await codeReader.listVideoInputDevices()
   selectedDeviceId.value = videoDevices.value[0]?.deviceId || null
   await bookStore.fetchBooks()
-  nextTick(() => {
-    const tooltipList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-    ;[...tooltipList].forEach((el) => new bootstrap.Tooltip(el))
-  })
 })
 
 onBeforeUnmount(() => codeReader.reset())

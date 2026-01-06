@@ -32,6 +32,7 @@ const UserSchema = Schema(
     },
     refresh_token: String,
   },
+  { timestamps: true },
   {
     virtuals: {
       full_name: {
