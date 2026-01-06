@@ -32,6 +32,16 @@ const scanning = ref(false)
 const mode = ref<'scan' | 'manual'>('scan')
 
 const codeReader = new BrowserMultiFormatReader()
+const OL_USER_AGENT = 'BOOKLET/1.0 (contact: rohailramesh@hotmail.com)'
+
+// Helper function for all Open Library API calls
+const fetchFromOpenLibrary = async (url: string) => {
+  return fetch(url, {
+    headers: {
+      'User-Agent': OL_USER_AGENT
+    }
+  })
+}
 
 // --------------------- Functions ---------------------
 
@@ -68,8 +78,8 @@ const lookupAndPreviewBook = async (isbn: string) => {
   coverUrl.value = ''
 
   try {
-    // Step 1: Get basic book info by ISBN
-    const isbnRes = await fetch(`https://openlibrary.org/isbn/${isbn}.json`)
+    // Step 1: ISBN lookup with header
+    const isbnRes = await fetchFromOpenLibrary(`https://openlibrary.org/isbn/${isbn}.json`)
     if (!isbnRes.ok) throw new Error('Book not found on Open Library')
 
     const isbnData = await isbnRes.json()
@@ -77,51 +87,50 @@ const lookupAndPreviewBook = async (isbn: string) => {
 
     let authorKey = null
 
-    // Step 2: Try to get work key from ISBN data
+    // Step 2: Work lookup if available
     if (isbnData.works?.[0]?.key) {
       const workKey = isbnData.works[0].key
-      const workRes = await fetch(`https://openlibrary.org${workKey}.json`)
+      const workRes = await fetchFromOpenLibrary(`https://openlibrary.org${workKey}.json`)
       if (workRes.ok) {
         const workData = await workRes.json()
-
-        // Step 3: Extract first author key from work
         if (workData.authors?.[0]?.author?.key) {
           authorKey = workData.authors[0].author.key
         }
       }
     }
 
-    // Fallback: Try direct authors array in ISBN data (sometimes present)
+    // Fallback: direct authors in ISBN data
     if (!authorKey && isbnData.authors?.[0]?.key) {
       authorKey = isbnData.authors[0].key
     }
 
-    // Step 4: Fetch author name if we have a key
+    // Step 3: Author lookup
     if (authorKey) {
       try {
-        const authorRes = await fetch(`https://openlibrary.org${authorKey}.json`)
+        const authorRes = await fetchFromOpenLibrary(`https://openlibrary.org${authorKey}.json`)
         if (authorRes.ok) {
           const authorData = await authorRes.json()
           authorName.value = authorData.name || 'Unknown Author'
         }
       } catch (err) {
-        console.warn('Failed to fetch author name:', err)
+        console.warn('Failed to fetch author:', err)
         authorName.value = 'Unknown Author'
       }
     } else {
       authorName.value = 'Unknown Author'
     }
 
-    // Fetch cover (independent)
+    // Cover fetch (third-party, no User-Agent required, but safe to include)
     try {
-      const coverRes = await fetch(`https://bookcover.longitood.com/bookcover/${isbn}`)
+      const coverRes = await fetch(`https://bookcover.longitood.com/bookcover/${isbn}`, {
+        headers: { 'User-Agent': OL_USER_AGENT } // optional but polite
+      })
       if (coverRes.ok) {
         const coverData = await coverRes.json()
         coverUrl.value = coverData.url || ''
       }
     } catch (err) {
       console.warn('Cover fetch failed:', err)
-      // Optional: fallback to Open Library cover
       coverUrl.value = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`
     }
   } catch (e: any) {
@@ -193,7 +202,14 @@ const saveBook = async () => {
     // Success → go to books list
     router.push('/books')
   } catch (err: any) {
-    saveError.value = err.message || 'Failed to save book to your library'
+    // Handle duplicate book gracefully
+    if (err.status === 409 || err.message?.toLowerCase().includes('duplicate')) {
+      saveError.value = '' // clear any previous error
+      lookupError.value = 'This book is already in your library!'
+      // Optional: add a success-like style later in template
+    } else {
+      saveError.value = 'This book is already in your library!'
+    }
   } finally {
     loading.value = false
   }
