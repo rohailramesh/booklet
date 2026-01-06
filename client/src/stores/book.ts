@@ -29,7 +29,7 @@ export const useBookStore = defineStore('book', {
       }
     },
 
-    async addBook(payload: { isbn: string; title: string; author?: string; cover_url?: string }) {
+    async addBook(payload: { isbn: string; title: string; author?: string; coverUrl?: string }) {
       this.error = null
 
       try {

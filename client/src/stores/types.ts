@@ -31,7 +31,7 @@ export interface IBook {
   isbn: string
   title: string
   author?: string
-  cover_url?: string
+  coverUrl?: string
   user: string // user id
   createdAt?: string
 }
