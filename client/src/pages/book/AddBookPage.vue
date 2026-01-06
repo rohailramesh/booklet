@@ -233,30 +233,6 @@ const submitManual = () => {
   manualISBN.value = '' // Clear input after lookup
 }
 
-const startScanning = () => {
-  scanning.value = true
-  codeReader.decodeFromVideoDevice(selectedDeviceId.value, videoRef.value!, async (result, err) => {
-    if (result) {
-      const isbn = result.getText().trim()
-      if (!isValidISBN(isbn)) {
-        lookupError.value = 'Invalid ISBN detected'
-        return
-      }
-
-      // Stop scanning and show preview
-      codeReader.reset()
-      scanning.value = false
-      await lookupAndPreviewBook(isbn)
-    }
-
-    if (err && !(err instanceof NotFoundException)) {
-      console.error(err)
-      lookupError.value = 'Camera error: ' + err.message
-      scanning.value = false
-    }
-  })
-}
-
 const resetForm = () => {
   codeReader.reset()
   scanning.value = false
@@ -264,12 +240,68 @@ const resetForm = () => {
   cancelPreview()
 }
 
+const startScanning = async () => {
+  scanning.value = true
+  lookupError.value = ''
+
+  let constraints: MediaStreamConstraints
+
+  if (selectedDeviceId.value) {
+    // Desktop or device with a selectable camera
+    constraints = { video: { deviceId: { exact: selectedDeviceId.value } } }
+  } else {
+    // Mobile fallback: use rear camera
+    constraints = { video: { facingMode: { exact: 'environment' } } }
+  }
+
+  try {
+    await codeReader.decodeFromConstraints(constraints, videoRef.value!, async (result, err) => {
+      if (result) {
+        const isbn = result.getText().trim()
+        if (!isValidISBN(isbn)) {
+          lookupError.value = 'Invalid ISBN detected'
+          return
+        }
+
+        codeReader.reset()
+        scanning.value = false
+        await lookupAndPreviewBook(isbn)
+      }
+
+      if (err && !(err instanceof NotFoundException)) {
+        console.error('ZXing error:', err)
+        lookupError.value = 'Camera error: ' + err.message
+        scanning.value = false
+      }
+    })
+  } catch (err: any) {
+    console.error('Failed to start camera:', err)
+    lookupError.value = 'Unable to access camera: ' + (err.message || err)
+    scanning.value = false
+  }
+}
+
+const stopScanning = () => {
+  codeReader.reset()
+  scanning.value = false
+}
+
+// ------------------ Device Setup ------------------
+
 onMounted(async () => {
-  videoDevices.value = await codeReader.listVideoInputDevices()
-  selectedDeviceId.value = videoDevices.value[0]?.deviceId || null
+  try {
+    const devices = await codeReader.listVideoInputDevices()
+    videoDevices.value = devices.filter((d) => d.kind === 'videoinput')
+
+    // Pick default: rear camera if available
+    const rearCamera = videoDevices.value.find((d) => /back|rear|environment/i.test(d.label))
+    selectedDeviceId.value = rearCamera?.deviceId || videoDevices.value[0]?.deviceId || null
+  } catch (err) {
+    console.warn('Could not list video devices:', err)
+  }
 })
 
-onBeforeUnmount(() => codeReader.reset())
+onBeforeUnmount(() => stopScanning())
 </script>
 
 <template>
