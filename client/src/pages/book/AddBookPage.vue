@@ -155,53 +155,56 @@ const submitManual = () => {
 
 const startScanning = async () => {
   if (scanning.value) return
+
   scanning.value = true
   lookupError.value = ''
 
   try {
-    let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: 'environment' } }
-      })
-    } catch {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true })
-    }
-
-    if (!videoRef.value) return
-    videoRef.value.srcObject = stream
-    await videoRef.value.play()
-
-    codeReader.decodeFromVideoDevice(undefined, videoRef.value, async (result, err) => {
-      if (result) {
-        const isbn = result.getText().trim()
-        if (!isValidISBN(isbn)) {
-          lookupError.value = 'Invalid ISBN detected'
-          return
+    await codeReader.decodeFromConstraints(
+      {
+        video: {
+          facingMode: { ideal: 'environment' }
         }
-        stopScanning()
-        await lookupAndPreviewBook(isbn)
+      },
+      videoRef.value!,
+      async (result, err) => {
+        if (result) {
+          const isbn = result.getText().trim()
+
+          if (!isValidISBN(isbn)) {
+            lookupError.value = 'Invalid ISBN detected'
+            return
+          }
+
+          stopScanning()
+          await lookupAndPreviewBook(isbn)
+        }
+
+        if (err && !(err instanceof NotFoundException)) {
+          console.error('ZXing error:', err)
+        }
       }
-      if (err && !(err instanceof NotFoundException)) {
-        console.error(err)
-      }
-    })
+    )
   } catch (err: any) {
     scanning.value = false
+
     let msg = 'Unable to access camera.'
     if (err.name === 'NotAllowedError') msg += ' Please allow camera access.'
     else if (location.protocol !== 'https:' && location.hostname !== 'localhost')
       msg += ' Camera requires HTTPS.'
+
     lookupError.value = msg
   }
 }
 
 const stopScanning = () => {
   codeReader.reset()
+
   if (videoRef.value?.srcObject) {
     ;(videoRef.value.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
     videoRef.value.srcObject = null
   }
+
   scanning.value = false
 }
 
@@ -245,14 +248,7 @@ onBeforeUnmount(stopScanning)
               <!-- Scan Mode -->
               <div v-if="mode === 'scan' && !pendingISBN">
                 <div class="text-center mb-4">
-                  <video
-                    ref="videoRef"
-                    class="img-fluid rounded border"
-                    style="max-height: 400px; background: #000"
-                    autoplay
-                    playsinline
-                    muted
-                  ></video>
+                  <video ref="videoRef" autoplay playsinline muted webkit-playsinline></video>
                 </div>
 
                 <div v-if="lookupError" class="alert alert-warning text-center">
