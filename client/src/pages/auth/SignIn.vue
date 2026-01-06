@@ -4,93 +4,97 @@ import { useAuthStore } from '@/stores/auth'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-//data
-const visible = ref<boolean>(false)
+const authStore = useAuthStore()
+const router = useRouter()
+
+const visible = ref(false)
+const loading = ref(false)
+const errorMessage = ref('')
+
 const loginData = reactive<ILoginData>({
   email: '',
   password: ''
 })
-const errorMessage = ref<string>('')
-const authStore = useAuthStore()
-const router = useRouter()
 
-//computed
-const submitDisable = computed(() => !loginData.email || !loginData.password)
+const submitDisabled = computed(() => {
+  return !loginData.email || !loginData.password || loading.value
+})
 
-//methods
 const signIn = async () => {
-  await authStore
-    .login(loginData)
-    .then(() => {
-      router.replace({ name: 'profile' })
-    })
-    .catch((err) => {
-      errorMessage.value = err.message
-    })
+  errorMessage.value = ''
+  loading.value = true
+
+  try {
+    await authStore.login(loginData)
+    router.replace({ name: 'profile' })
+  } catch (err: any) {
+    errorMessage.value = err?.message || 'Login failed'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
+
 <template>
   <v-container class="d-flex align-center justify-center w-100 h-100">
-    <v-card class="mx-auto pa-12 pb-8" elevation="8" max-width="448" rounded="lg">
-      <div class="text-subtitle-1 text-medium-emphasis">Account</div>
-
-      <v-text-field
-        v-model="loginData.email"
-        density="compact"
-        placeholder="Email address"
-        prepend-inner-icon="mdi-email-outline"
-        variant="outlined"
-      ></v-text-field>
-
-      <div class="text-subtitle-1 text-medium-emphasis d-flex align-center justify-space-between">
-        Password
-
-        <a
-          class="text-caption text-decoration-none text-blue"
-          href="#"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          Forgot login password?</a
-        >
+    <v-card class="mx-auto pa-10" elevation="8" max-width="440" rounded="lg">
+      <!-- Header -->
+      <div class="text-center mb-6">
+        <h2 class="text-h5 font-weight-medium">Welcome back</h2>
+        <p class="text-body-2 text-medium-emphasis mt-1">Sign in to continue</p>
       </div>
 
+      <!-- Error -->
+      <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4" density="compact">
+        {{ errorMessage }}
+      </v-alert>
+
+      <!-- Email -->
+      <v-text-field
+        v-model="loginData.email"
+        label="Email"
+        type="email"
+        prepend-inner-icon="mdi-email-outline"
+        variant="outlined"
+        density="comfortable"
+        class="mb-4"
+      />
+
+      <!-- Password -->
       <v-text-field
         v-model="loginData.password"
-        :append-inner-icon="visible ? 'mdi-eye-off' : 'mdi-eye'"
+        label="Password"
         :type="visible ? 'text' : 'password'"
-        density="compact"
-        placeholder="Enter your password"
         prepend-inner-icon="mdi-lock-outline"
+        :append-inner-icon="visible ? 'mdi-eye-off' : 'mdi-eye'"
         variant="outlined"
+        density="comfortable"
         @click:append-inner="visible = !visible"
-      ></v-text-field>
+      />
 
-      <v-card class="mb-12" color="surface-variant" variant="tonal">
-        <v-card-text class="text-medium-emphasis text-caption">
-          Warning: After 3 consecutive failed login attempts, you account will be temporarily locked
-          for three hours. If you must login now, you can also click "Forgot login password?" below
-          to reset the login password.
-        </v-card-text>
-      </v-card>
+      <!-- Persistent login info -->
+      <p class="text-caption text-medium-emphasis mt-2">
+        You’ll stay signed in on this device for up to 30 days.
+      </p>
 
+      <!-- Submit -->
       <v-btn
-        @click="signIn"
-        :disabled="submitDisable"
         block
-        class="mb-8"
-        color="blue"
         size="large"
-        variant="tonal"
+        color="primary"
+        class="mt-6"
+        :loading="loading"
+        :disabled="submitDisabled"
+        @click="signIn"
       >
-        Log In
+        Sign in
       </v-btn>
 
-      <v-card-text class="text-center">
-        <router-link class="text-blue text-decoration-none" to="/signup" rel="noopener noreferrer">
-          Sign up now <v-icon icon="mdi-chevron-right"></v-icon>
-        </router-link>
-      </v-card-text>
+      <!-- Footer -->
+      <div class="text-center mt-6 text-body-2">
+        Don’t have an account?
+        <router-link to="/signup" class="text-primary text-decoration-none"> Sign up </router-link>
+      </div>
     </v-card>
   </v-container>
 </template>
