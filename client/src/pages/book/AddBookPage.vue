@@ -122,7 +122,7 @@ const saveBook = async () => {
       isbn: pendingISBN.value,
       title: bookTitle.value,
       author: authorName.value || undefined,
-      cover_url: coverUrl.value || undefined
+      coverUrl: coverUrl.value || undefined
     })
     router.push('/books')
   } catch (err: any) {
