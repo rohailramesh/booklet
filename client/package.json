@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@mdi/font": "^7.2.96",
+    "@teckel/vue-barcode-reader": "^1.1.8",
     "@zxing/library": "^0.21.3",
     "axios": "^1.4.0",
     "bootstrap": "^5.3.8",

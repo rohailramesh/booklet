@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library'
+import { ref, watch } from 'vue'
+import { StreamBarcodeReader } from '@teckel/vue-barcode-reader'
 import { useBookStore } from '@/stores/book'
-import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
 const bookStore = useBookStore()
-const authStore = useAuthStore()
 const router = useRouter()
 
 // Scanner state
-const videoRef = ref<HTMLVideoElement | null>(null)
 const manualInputRef = ref<HTMLInputElement | null>(null)
 const manualISBN = ref('')
 const pendingISBN = ref<string | null>(null)
@@ -24,10 +21,11 @@ const coverUrl = ref('')
 const loading = ref(false)
 const lookupError = ref('')
 const saveError = ref('')
-const scanning = ref(false)
+const scannedCode = ref<string | null>(null)
+const scannerLoaded = ref(false)
+
 const mode = ref<'scan' | 'manual'>('scan')
 
-const codeReader = new BrowserMultiFormatReader()
 const OL_USER_AGENT = 'BOOKLET/1.0 (contact: rohailramesh@hotmail.com)'
 
 const fetchFromOpenLibrary = async (url: string) => {
@@ -45,7 +43,7 @@ const isValidISBN = (value: string) => {
 }
 
 const validateManualISBN = () => {
-  const trimmed = manualISBN.value?.trim() // Add null check
+  const trimmed = manualISBN.value?.trim()
   if (trimmed && !isValidISBN(trimmed)) return 'Invalid ISBN-13 format'
   return ''
 }
@@ -112,7 +110,6 @@ const lookupAndPreviewBook = async (isbn: string) => {
 }
 
 const saveBook = async () => {
-  // Early guard ensures pendingISBN.value is string
   if (!pendingISBN.value || !bookTitle.value) return
 
   saveError.value = ''
@@ -120,7 +117,7 @@ const saveBook = async () => {
 
   try {
     await bookStore.addBook({
-      isbn: pendingISBN.value, // ← Now safe: TS knows it's string
+      isbn: pendingISBN.value,
       title: bookTitle.value,
       author: authorName.value || undefined,
       coverUrl: coverUrl.value || undefined
@@ -144,6 +141,7 @@ const cancelPreview = () => {
   coverUrl.value = ''
   lookupError.value = ''
   saveError.value = ''
+  scannedCode.value = null
 }
 
 const submitManual = () => {
@@ -153,66 +151,24 @@ const submitManual = () => {
   manualISBN.value = ''
 }
 
-const startScanning = async () => {
-  if (scanning.value) return
-
-  scanning.value = true
+// Reset scanner on error
+const resetScanner = () => {
+  scannedCode.value = null
   lookupError.value = ''
-
-  try {
-    await codeReader.decodeFromConstraints(
-      {
-        video: {
-          facingMode: { ideal: 'environment' }
-        }
-      },
-      videoRef.value!,
-      async (result, err) => {
-        if (result) {
-          const isbn = result.getText().trim()
-
-          if (!isValidISBN(isbn)) {
-            lookupError.value = 'Invalid ISBN detected'
-            return
-          }
-
-          stopScanning()
-          await lookupAndPreviewBook(isbn)
-        }
-
-        if (err && !(err instanceof NotFoundException)) {
-          console.error('ZXing error:', err)
-        }
-      }
-    )
-  } catch (err: any) {
-    scanning.value = false
-
-    let msg = 'Unable to access camera.'
-    if (err.name === 'NotAllowedError') msg += ' Please allow camera access.'
-    else if (location.protocol !== 'https:' && location.hostname !== 'localhost')
-      msg += ' Camera requires HTTPS.'
-
-    lookupError.value = msg
-  }
 }
 
-const stopScanning = () => {
-  codeReader.reset()
-
-  if (videoRef.value?.srcObject) {
-    ;(videoRef.value.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
-    videoRef.value.srcObject = null
+// Watch for scanned barcode and process it
+watch(scannedCode, (code) => {
+  if (code) {
+    const isbn = code.trim()
+    if (isValidISBN(isbn)) {
+      lookupAndPreviewBook(isbn)
+    } else {
+      lookupError.value = 'Scanned code is not a valid ISBN-13'
+      // Do not clear scannedCode here — let user see it and retry
+    }
   }
-
-  scanning.value = false
-}
-
-onMounted(() => {
-  if (mode.value === 'manual') nextTick(() => manualInputRef.value?.focus())
 })
-
-onBeforeUnmount(stopScanning)
 </script>
 
 <template>
@@ -247,22 +203,35 @@ onBeforeUnmount(stopScanning)
 
               <!-- Scan Mode -->
               <div v-if="mode === 'scan' && !pendingISBN">
-                <div class="text-center mb-4">
-                  <video ref="videoRef" autoplay playsinline muted webkit-playsinline></video>
+                <div class="scanner-wrapper">
+                  <StreamBarcodeReader
+                    @decode="(text) => (scannedCode = text)"
+                    @loaded="scannerLoaded = true"
+                  />
+
+                  <!-- Loading overlay -->
+                  <div v-if="!scannerLoaded" class="overlay loading">
+                    <div class="spinner-border text-light" role="status"></div>
+                    <p class="mt-2 text-light">Loading camera...</p>
+                  </div>
+
+                  <!-- Brief scanned code display -->
+                  <div v-if="scannedCode && !pendingISBN && !lookupError" class="overlay result">
+                    <div class="result-box">
+                      Scanned: <strong>{{ scannedCode }}</strong>
+                    </div>
+                  </div>
+
+                  <!-- Error overlay -->
+                  <div v-if="lookupError && !loading" class="overlay error">
+                    <div class="alert alert-warning mb-3">{{ lookupError }}</div>
+                    <button class="btn btn-light" @click="resetScanner">Try Again</button>
+                  </div>
                 </div>
 
-                <div v-if="lookupError" class="alert alert-warning text-center">
-                  {{ lookupError }}
+                <div class="text-center mt-4 text-muted small">
+                  Point your camera at the barcode on the back of the book
                 </div>
-
-                <button
-                  class="btn btn-primary btn-lg w-100"
-                  @click="startScanning"
-                  :disabled="scanning"
-                >
-                  <span v-if="scanning" class="spinner-border spinner-border-sm me-2"></span>
-                  {{ scanning ? 'Scanning...' : 'Start Scanning' }}
-                </button>
               </div>
 
               <!-- Manual Mode -->
@@ -301,6 +270,7 @@ onBeforeUnmount(stopScanning)
                     <img
                       v-if="coverUrl"
                       :src="coverUrl"
+                      alt="Book cover"
                       class="rounded shadow"
                       style="width: 120px; object-fit: contain"
                     />
@@ -349,16 +319,16 @@ onBeforeUnmount(stopScanning)
                 </div>
               </div>
 
-              <!-- Loading -->
+              <!-- Loading during lookup -->
               <div v-if="loading && pendingISBN" class="text-center py-5">
                 <div class="spinner-border text-primary" style="width: 3rem; height: 3rem"></div>
                 <p class="mt-3 text-muted">Looking up book details...</p>
               </div>
 
               <div class="text-center mt-5">
-                <router-link to="/books" class="btn btn-link text-muted"
-                  >← Back to My Books</router-link
-                >
+                <router-link to="/books" class="btn btn-link text-muted">
+                  ← Back to My Books
+                </router-link>
               </div>
             </div>
           </div>
@@ -372,8 +342,46 @@ onBeforeUnmount(stopScanning)
 .card {
   border-radius: 1rem;
 }
-video {
-  border: 3px solid #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+.scanner-wrapper {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.scanner-wrapper :deep(video) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+.result-box {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 1.5rem;
+  border: 3px solid limegreen;
+  font-weight: bold;
+}
+
+.error .alert {
+  max-width: 80%;
 }
 </style>
