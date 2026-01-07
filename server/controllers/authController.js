@@ -2,12 +2,12 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 
-const isProd = process.env.NODE_ENV === "production";
+// const isProd = process.env.NODE_ENV === "production";
 
 const cookieOptions = {
   httpOnly: true,
-  sameSite: isProd ? "None" : "Lax",
-  secure: isProd,
+  secure: true, // REQUIRED on HTTPS
+  sameSite: "none", // REQUIRED for cross-site
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 };
 

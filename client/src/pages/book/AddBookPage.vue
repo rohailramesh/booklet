@@ -304,8 +304,10 @@ watch(scannedCode, (code) => {
                     </div>
                   </div>
                   <div v-else>
-                    <div v-if="lookupError" class="alert alert-warning">{{ lookupError }}</div>
-                    <div v-if="saveError" class="alert alert-danger mt-3">{{ saveError }}</div>
+                    <div v-if="lookupError" class="alert alert-warning">Error looking up book</div>
+                    <div v-if="saveError" class="alert alert-danger mt-3">
+                      Book already exists. Please check your library!
+                    </div>
                     <div class="d-flex gap-2 mt-4">
                       <button
                         class="btn btn-success flex-fill"
