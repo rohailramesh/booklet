@@ -11,6 +11,7 @@ const router = useRouter()
 const manualInputRef = ref<HTMLInputElement | null>(null)
 const manualISBN = ref('')
 const pendingISBN = ref<string | null>(null)
+const hasScanned = ref(false)
 
 // Book preview
 const bookTitle = ref('')
@@ -26,14 +27,16 @@ const scannerLoaded = ref(false)
 
 const mode = ref<'scan' | 'manual'>('scan')
 
-const OL_USER_AGENT = 'BOOKLET/1.0 (contact: rohailramesh@hotmail.com)'
+// const OL_USER_AGENT = 'BOOKLET/1.0 (contact: rohailramesh@hotmail.com)'
 
+// const fetchFromOpenLibrary = async (url: string) => {
+//   return fetch(url, {
+//     headers: { 'User-Agent': OL_USER_AGENT }
+//   })
+// }
 const fetchFromOpenLibrary = async (url: string) => {
-  return fetch(url, {
-    headers: { 'User-Agent': OL_USER_AGENT }
-  })
+  return fetch(url)
 }
-
 const isValidISBN = (value: string) => {
   const digits = value.replace(/[^0-9X]/gi, '')
   if (digits.length !== 13) return false
@@ -142,6 +145,7 @@ const cancelPreview = () => {
   lookupError.value = ''
   saveError.value = ''
   scannedCode.value = null
+  hasScanned.value = false
 }
 
 const submitManual = () => {
@@ -159,14 +163,14 @@ const resetScanner = () => {
 
 // Watch for scanned barcode and process it
 watch(scannedCode, (code) => {
-  if (code) {
-    const isbn = code.trim()
-    if (isValidISBN(isbn)) {
-      lookupAndPreviewBook(isbn)
-    } else {
-      lookupError.value = 'Scanned code is not a valid ISBN-13'
-      // Do not clear scannedCode here — let user see it and retry
-    }
+  if (!code || hasScanned.value) return
+
+  const isbn = code.trim()
+  if (isValidISBN(isbn)) {
+    hasScanned.value = true
+    lookupAndPreviewBook(isbn)
+  } else {
+    lookupError.value = 'Scanned code is not a valid ISBN-13'
   }
 })
 </script>
