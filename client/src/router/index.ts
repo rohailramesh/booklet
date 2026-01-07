@@ -26,12 +26,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/ProfilePage.vue'),
     meta: { requiresAuth: true }
   },
-  // {
-  //   path: '/books',
-  //   name: 'books',
-  //   component: () => import('@/pages/BooksPage.vue'),
-  //   meta: { requiresAuth: true }
-  // },
   {
     path: '/books',
     name: 'books',
@@ -51,29 +45,34 @@ const router = createRouter({
   routes
 })
 
-let authChecked = false
-
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  // 🔑 Ensure auth is checked once (refresh token)
-  if (!authChecked) {
-    authChecked = true
-    await authStore.attempt()
-  }
-
-  // 🔒 Protected routes
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return {
-      name: 'signin',
-      query: { redirect: to.fullPath }
+  // If we don't have a valid session, try to restore it via refresh token
+  if (!authStore.isAuthenticated) {
+    try {
+      await authStore.attempt() // Calls refresh() → sets accessToken → getUser()
+    } catch (error) {
+      // Refresh failed → stay logged out
+      authStore.reset()
     }
   }
 
-  // 🚫 Guest-only routes
-  if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    return { name: 'home' }
+  // Protected route
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return next({
+      name: 'signin',
+      query: { redirect: to.fullPath }
+    })
   }
+
+  // Guest-only route (e.g. login/signup)
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    return next({ name: 'home' })
+  }
+
+  // All good → proceed
+  return next()
 })
 
 export default router
