@@ -205,7 +205,7 @@ watch(scannedCode, (code) => {
               <div v-if="mode === 'scan' && !pendingISBN">
                 <div class="scanner-wrapper">
                   <StreamBarcodeReader
-                    @decode="(text) => (scannedCode = text)"
+                    @decode="(text: string) => (scannedCode = text)"
                     @loaded="scannerLoaded = true"
                   />
 
