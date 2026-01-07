@@ -3,21 +3,20 @@ import { useApi, useApiPrivate } from '@/composables/useApi'
 import type { IState, IUser, ILoginData, IRegisterData } from './types'
 
 export const useAuthStore = defineStore('auth', {
-  state: (): IState & { loading: boolean } => ({
+  state: (): IState & { loading: boolean; refreshToken: string } => ({
     user: {} as IUser,
     accessToken: '',
-    loading: false // ← New loading state
+    refreshToken: '',
+    loading: false
   }),
 
   getters: {
     userDetail: (state) => state.user,
     isAuthenticated: (state) => !!state.accessToken,
-    // Optional: expose loading as getter too
     isLoading: (state) => state.loading
   },
 
   actions: {
-    // Helper to set loading state
     setLoading(value: boolean) {
       this.loading = value
     },
@@ -25,9 +24,17 @@ export const useAuthStore = defineStore('auth', {
     async attempt() {
       this.setLoading(true)
       try {
-        await this.refresh()
-        await this.getUser()
-      } catch {
+        // Load refresh token from localStorage if not in memory
+        const stored = localStorage.getItem('refresh_token')
+        if (stored && !this.refreshToken) {
+          this.refreshToken = stored
+        }
+
+        if (this.refreshToken) {
+          await this.refresh()
+          await this.getUser()
+        }
+      } catch (error) {
         this.reset()
       } finally {
         this.setLoading(false)
@@ -39,6 +46,11 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await useApi().post('/api/auth/login', payload)
         this.accessToken = data.access_token
+        this.refreshToken = data.refresh_token
+
+        // Persist refresh token
+        localStorage.setItem('refresh_token', data.refresh_token)
+
         await this.getUser()
       } finally {
         this.setLoading(false)
@@ -67,7 +79,14 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       this.setLoading(true)
       try {
-        await useApiPrivate().post('/api/auth/logout')
+        // Optional: send current refresh token to server for cleanup
+        if (this.refreshToken) {
+          await useApiPrivate().post('/api/auth/logout', {
+            refresh_token: this.refreshToken
+          })
+        }
+      } catch (error) {
+        // Ignore logout errors
       } finally {
         this.reset()
         this.setLoading(false)
@@ -75,10 +94,18 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async refresh() {
+      if (!this.refreshToken) {
+        const stored = localStorage.getItem('refresh_token')
+        if (!stored) throw new Error('No refresh token available')
+        this.refreshToken = stored
+      }
+
       try {
-        const { data } = await useApi().post('/api/auth/refresh')
+        const { data } = await useApi().post('/api/auth/refresh', {
+          refresh_token: this.refreshToken
+        })
         this.accessToken = data.access_token
-      } catch {
+      } catch (error) {
         this.reset()
         throw new Error('Refresh failed')
       }
@@ -86,8 +113,103 @@ export const useAuthStore = defineStore('auth', {
 
     reset() {
       this.accessToken = ''
+      this.refreshToken = ''
       this.user = {} as IUser
       this.loading = false
+      localStorage.removeItem('refresh_token')
     }
   }
 })
+// import { defineStore } from 'pinia'
+// import { useApi, useApiPrivate } from '@/composables/useApi'
+// import type { IState, IUser, ILoginData, IRegisterData } from './types'
+
+// export const useAuthStore = defineStore('auth', {
+//   state: (): IState & { loading: boolean } => ({
+//     user: {} as IUser,
+//     accessToken: '',
+//     loading: false // ← New loading state
+//   }),
+
+//   getters: {
+//     userDetail: (state) => state.user,
+//     isAuthenticated: (state) => !!state.accessToken,
+//     // Optional: expose loading as getter too
+//     isLoading: (state) => state.loading
+//   },
+
+//   actions: {
+//     // Helper to set loading state
+//     setLoading(value: boolean) {
+//       this.loading = value
+//     },
+
+//     async attempt() {
+//       this.setLoading(true)
+//       try {
+//         await this.refresh()
+//         await this.getUser()
+//       } catch {
+//         this.reset()
+//       } finally {
+//         this.setLoading(false)
+//       }
+//     },
+
+//     async login(payload: ILoginData) {
+//       this.setLoading(true)
+//       try {
+//         const { data } = await useApi().post('/api/auth/login', payload)
+//         this.accessToken = data.access_token
+//         await this.getUser()
+//       } finally {
+//         this.setLoading(false)
+//       }
+//     },
+
+//     async register(payload: IRegisterData) {
+//       this.setLoading(true)
+//       try {
+//         await useApi().post('/api/auth/register', payload)
+//       } finally {
+//         this.setLoading(false)
+//       }
+//     },
+
+//     async getUser() {
+//       this.setLoading(true)
+//       try {
+//         const { data } = await useApiPrivate().get('/api/auth/user')
+//         this.user = data
+//       } finally {
+//         this.setLoading(false)
+//       }
+//     },
+
+//     async logout() {
+//       this.setLoading(true)
+//       try {
+//         await useApiPrivate().post('/api/auth/logout')
+//       } finally {
+//         this.reset()
+//         this.setLoading(false)
+//       }
+//     },
+
+//     async refresh() {
+//       try {
+//         const { data } = await useApi().post('/api/auth/refresh')
+//         this.accessToken = data.access_token
+//       } catch {
+//         this.reset()
+//         throw new Error('Refresh failed')
+//       }
+//     },
+
+//     reset() {
+//       this.accessToken = ''
+//       this.user = {} as IUser
+//       this.loading = false
+//     }
+//   }
+// })
