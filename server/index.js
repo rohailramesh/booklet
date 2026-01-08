@@ -13,6 +13,14 @@ const authentication = require("./middleware/authentication");
 const app = express();
 const PORT = process.env.PORT || 3500;
 
+app.get("/api/ping", (req, res) => {
+  res.status(200).json({
+    message: "pong",
+    status: "alive",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
 connectDB();
 app.set("trust proxy", 1);
 //Allow Credentials
