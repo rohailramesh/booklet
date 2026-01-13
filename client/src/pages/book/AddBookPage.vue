@@ -208,10 +208,18 @@ watch(scannedCode, (code) => {
               <!-- Scan Mode -->
               <div v-if="mode === 'scan' && !pendingISBN">
                 <div class="scanner-wrapper">
-                  <StreamBarcodeReader
+                  <!-- <StreamBarcodeReader
                     @decode="(text: string) => (scannedCode = text)"
                     @loaded="scannerLoaded = true"
                     autofocus
+                  /> -->
+                  <StreamBarcodeReader
+                    no-front-cameras
+                    torch
+                    landscape
+                    :msBetweenDecoding="300"
+                    @decode="(text: string) => (scannedCode = text)"
+                    @loaded="scannerLoaded = true"
                   />
 
                   <!-- Loading overlay -->
