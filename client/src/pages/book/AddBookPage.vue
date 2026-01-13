@@ -211,7 +211,7 @@ watch(scannedCode, (code) => {
                   <StreamBarcodeReader
                     @decode="(text: string) => (scannedCode = text)"
                     @loaded="scannerLoaded = true"
-                    :autofocus="false"
+                    autofocus
                   />
 
                   <!-- Loading overlay -->
