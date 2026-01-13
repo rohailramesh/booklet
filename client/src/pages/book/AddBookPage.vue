@@ -215,7 +215,6 @@ watch(scannedCode, (code) => {
                   /> -->
                   <StreamBarcodeReader
                     no-front-cameras
-                    torch
                     landscape
                     :msBetweenDecoding="300"
                     @decode="(text: string) => (scannedCode = text)"
